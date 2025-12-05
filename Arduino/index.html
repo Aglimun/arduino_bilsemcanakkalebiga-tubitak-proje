@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Arduino Sensör Dashboardu | PHP Sunucu Kayıtlı & Grafik</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  /* GENEL STİL VE FONT */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+  :root {
+    --bg-primary: #f0f4f8;
+    --bg-secondary: #ffffff;
+    --text-color: #333333;
+    --text-muted: #6c757d;
+    --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    --accent-color: #2196f3;
+  }
+  .dark-mode {
+    --bg-primary: #1e1e2d;
+    --bg-secondary: #27293d;
+    --text-color: #ffffff;
+    --text-muted: #a0a0a0;
+    --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    --accent-color: #4CAF50;
+  }
+
+  body { 
+    font-family: 'Inter', sans-serif; 
+    background: var(--bg-primary); 
+    margin: 0; 
+    padding: 25px;
+    color: var(--text-color);
+    transition: background-color 0.3s;
+  }
+  .header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;
+  }
+  h1 { margin: 0; color: var(--text-color); font-weight: 600; }
+  .action-buttons button {
+    padding: 10px 20px; font-size: 14px; border: none;
+    border-radius: 8px; cursor: pointer; transition: background-color 0.3s, opacity 0.3s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  #connect { background-color: var(--accent-color); color: white; margin-right: 15px; }
+  #connect:hover { opacity: 0.9; }
+  #modeToggle { background-color: var(--bg-secondary); color: var(--text-color); border: 1px solid var(--text-color); }
+  #modeToggle:hover { background-color: rgba(255, 255, 255, 0.1); }
+
+  /* KART VE DÜZEN */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 25px;
+  }
+  .card-container { display: flex; gap: 25px; margin-bottom: 25px; }
+  .card { 
+    background: var(--bg-secondary); padding: 20px; border-radius: 12px; 
+    box-shadow: var(--card-shadow); width: 100%; text-align: left;
+    transition: background-color 0.3s, box-shadow 0.3s;
+  }
+  .card h3 { margin: 0 0 10px; color: var(--text-muted); font-weight: 400; font-size: 0.9em; display: flex; align-items: center; }
+  .metric-value { font-size: 2.5em; font-weight: 700; color: var(--text-color); margin-top: 5px; }
+
+  /* BARLAR VE DURUM GÖSTERGELERİ */
+  .bar-container { height: 8px; background: var(--text-muted); border-radius: 5px; overflow: hidden; margin-top: 15px; }
+  .bar-fill { height: 100%; transition: width 0.3s ease; }
+  #soilBar { background-color: #4CAF50; }
+  #potBar { background-color: #ff9800; }
+  .status-info { margin-top: 15px; font-weight: 600; display: flex; align-items: center; }
+  .status-indicator {
+    width: 10px; height: 10px; border-radius: 50%; margin-right: 8px;
+    background: #f44336; box-shadow: 0 0 8px rgba(244, 67, 54, 0.5);
+    transition: background-color 0.3s, box-shadow 0.3s;
+  }
+  #pump[data-status="1"] .status-indicator { background: #4CAF50; box-shadow: 0 0 8px rgba(76, 175, 80, 0.8); }
+  .led-card .status-indicator { width: 25px; height: 25px; margin-top: 10px; display: block; }
+  .led-card.cold .status-indicator { background: #2196f3; box-shadow: 0 0 15px #2196f3; }
+  .led-card.warm .status-indicator { background: #f44336; box-shadow: 0 0 15px #f44336; }
+  .led-card.normal .status-indicator { background: #4CAF50; box-shadow: 0 0 15px #4CAF50; }
+
+  /* YENİ EKLENEN KUTULAR İÇİN STİL */
+  .chart-area { grid-column: 1 / 2; }
+  .sidebar { grid-column: 2 / 3; display: grid; grid-template-rows: 1fr 1fr; gap: 25px; }
+  /* CHART STİLİ */
+  #sensorChart { background: var(--bg-secondary); }
+
+</style>
+</head>
+<body class="dark-mode"> 
+
+<div class="header">
+  <h1>⚙️ Arduino Sensör Dashboardu</h1>
+  <div class="action-buttons">
+    <button id="connect">🔌 Bağlan</button>
+    <button id="modeToggle">☀️ Açık Tema</button>
+  </div>
+</div>
+
+<div class="dashboard-grid">
+  <div>
+    <div class="card-container">
+      <div class="card">
+        <h3>💧 TOPRAK NEMİ</h3>
+        <div id="soil" class="metric-value">0%</div>
+        <div class="bar-container"><div id="soilBar" class="bar-fill" style="width:0%"></div></div>
+        <div id="pump" data-status="0" class="status-info">
+          <span class="status-indicator"></span> Pompa Kapalı
+        </div>
+      </div>
+      
+      <div class="card">
+        <h3>⚙️ POTANSİYOMETRE</h3>
+        <div id="pot" class="metric-value">0</div>
+        <div class="bar-container"><div id="potBar" class="bar-fill" style="width:0%"></div></div>
+        <div class="status-info" style="color: var(--text-muted);">0-1023 Değeri</div>
+      </div>
+
+      <div class="card led-card" id="temperature">
+        <h3>🌡️ SICAKLIK</h3>
+        <div id="temp" class="metric-value">0°C</div>
+        <div class="status-info">
+          Durum: Normal
+          <div id="tempLed" class="status-indicator"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card chart-area">
+      <h3>📈 TÜM SENSÖR VERİLERİ GEÇMİŞİ (Son 20 Ölçüm)</h3>
+      <div id="chart-placeholder" style="height: 350px;">
+        <canvas id="sensorChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="card">
+      <h3>☀️ TAHMİN / PROGNOZ</h3>
+      <div class="metric-value" id="prediction-value">Bağlanıyor...</div>
+      <p style="color: var(--text-muted); font-size: 0.9em; margin-top: 10px;">
+        Veriler sunucudan geldikten sonra hesaplanır.
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>✅ SİSTEM ÖZETİ</h3>
+      <ul style="list-style: none; padding: 0; color: var(--text-color);">
+        <li style="color: #4CAF50; margin-bottom: 5px;">Sunucu Durumu: <span id="server-status">Kontrol Ediliyor...</span></li>
+        <li style="color: #ff9800; margin-bottom: 5px;">Pompa: **Otomatik Kontrol**</li>
+        <li style="color: var(--text-muted);">Bağlantı: **Seri Port Aktif**</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+let port;
+let reader;
+let buffer = ""; 
+
+const CHART_VISIBLE_POINTS = 20; // Grafikte gösterilecek maksimum nokta sayısı
+let sensorChart;
+let varStyles; // Tema değişkenlerini tutar
+
+// 🎯 PHP ENDPOINT'leri. Dosyalar aynı klasörde olduğu için doğrudan isimlerini kullanıyoruz.
+const SAVE_ENDPOINT = 'save_data.php'; 
+const GET_ENDPOINT = 'get_data.php'; 
+
+// -----------------------------------------------------------
+// 1. SUNUCU İŞLEMLERİ (PHP UYUMLU)
+// -----------------------------------------------------------
+
+async function saveDataToServer(dataPoint) {
+    try {
+        const response = await fetch(SAVE_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataPoint)
+        });
+
+        if (response.ok) {
+            document.getElementById("server-status").textContent = "Aktif (Kaydediliyor)";
+        } else {
+            document.getElementById("server-status").textContent = `Hata (${response.status})`;
+        }
+    } catch (e) {
+        document.getElementById("server-status").textContent = "Bağlantı Hatası (PHP dosyasına ulaşılamıyor)!";
+        console.error("Sunucuya veri gönderilemedi:", e);
+    }
+}
+
+async function loadDataFromServer() {
+    try {
+        // En son 20 kaydı çekmek için limit parametresi gönder
+        const response = await fetch(`${GET_ENDPOINT}?limit=${CHART_VISIBLE_POINTS}`);
+        
+        if (response.ok) {
+            const history = await response.json();
+            updateChart(history);
+            document.getElementById("server-status").textContent = "Aktif (Veriler Yüklendi)";
+            
+            // Yüklenen son veriye göre tahmini güncelle
+            if (history.length > 0) {
+                 updatePrediction(history[history.length - 1].sic);
+            }
+        } else {
+            document.getElementById("server-status").textContent = `Veri Çekme Hatası (${response.status})`;
+        }
+    } catch (e) {
+        document.getElementById("server-status").textContent = "Sunucuya Bağlanılamadı!";
+        console.error("Sunucudan veri çekilemedi:", e);
+    }
+}
+
+// -----------------------------------------------------------
+// 2. CHART.JS İŞLEMLERİ
+// -----------------------------------------------------------
+
+function initializeChart() {
+    const ctx = document.getElementById('sensorChart').getContext('2d');
+    sensorChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [], 
+            datasets: [{
+                label: 'Sıcaklık (°C)',
+                data: [],
+                borderColor: '#f44336', // Kırmızı
+                tension: 0.2, fill: false, yAxisID: 'yTemp'
+            },
+            {
+                label: 'Nem (%)',
+                data: [],
+                borderColor: '#2196f3', // Mavi
+                tension: 0.2, fill: false, yAxisID: 'yNemPot'
+            },
+            {
+                label: 'Potansiyometre (0-1023)',
+                data: [],
+                borderColor: '#ff9800', // Turuncu
+                tension: 0.2, fill: false, yAxisID: 'yNemPot'
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: {
+                    display: true, title: { display: true, text: 'Zaman' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                },
+                yTemp: {
+                    type: 'linear', display: true, position: 'left',
+                    title: { display: true, text: 'Sıcaklık (°C)' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                },
+                yNemPot: {
+                    type: 'linear', display: true, position: 'right',
+                    title: { display: true, text: 'Nem/Pot (0-1023)' },
+                    min: 0, max: 1023,
+                    grid: { drawOnChartArea: false }
+                }
+            },
+            plugins: {
+                // Başlangıçta varsayılan renk, sonra tema ile güncellenecek
+                legend: { labels: { color: 'white' } } 
+            }
+        }
+    });
+}
+
+function updateChart(history) {
+    if (!sensorChart) return;
+    
+    // Tema renklerini al ve uygula
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    const color = isDarkMode ? 'white' : 'black';
+    sensorChart.options.scales.x.ticks = { color: color };
+    sensorChart.options.scales.yTemp.ticks = { color: color };
+    sensorChart.options.scales.yNemPot.ticks = { color: color };
+    sensorChart.options.plugins.legend.labels.color = color;
+
+    // Grafik verilerini hazırla (Sunucudan gelen verinin tamamı kullanılır)
+    const labels = history.map(d => d.time);
+    const nemData = history.map(d => d.nem);
+    const sicData = history.map(d => d.sic);
+    const potData = history.map(d => d.pot);
+
+    sensorChart.data.labels = labels;
+    sensorChart.data.datasets[0].data = sicData;
+    sensorChart.data.datasets[1].data = nemData;
+    sensorChart.data.datasets[2].data = potData;
+    
+    sensorChart.update();
+}
+
+// -----------------------------------------------------------
+// 3. ARDUINO SERİ PORT İŞLEMLERİ (GECİKME ÇÖZÜMÜ KORUNDU)
+// -----------------------------------------------------------
+
+document.getElementById("connect").addEventListener("click", async () => {
+    if ("serial" in navigator) {
+        try {
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 9600 });
+            document.getElementById("connect").innerText = "Bağlanıldı (Veri Geliyor...)";
+            const textDecoder = new TextDecoderStream();
+            port.readable.pipeTo(textDecoder.writable);
+            reader = textDecoder.readable.getReader();
+            readLoop();
+        } catch (err) {
+            alert("Bağlantı Hatası: " + err);
+        }
+    } else {
+        alert("Tarayıcınız Seri Port API'ını desteklemiyor.");
+    }
+});
+
+async function readLoop() {
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) {
+            buffer += value;
+            
+            if (buffer.includes('\n')) {
+                let lines = buffer.split('\n');
+                buffer = lines.pop(); 
+
+                // GECİKME ÇÖZÜMÜ: Sadece en son geçerli veriyi işle 
+                for (let i = lines.length - 1; i >= 0; i--) {
+                    const line = lines[i].trim();
+                    if (line.includes("nem:")) {
+                        processLine(line);
+                        break; 
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------
+// 4. VERİ İŞLEME VE SUNUCUYA GÖNDERİM
+// -----------------------------------------------------------
+
+function processLine(data) {
+    try {
+        const parts = data.split(';');
+        let latestValues = {}; 
+
+        parts.forEach(part => {
+            const [key, val] = part.split(':');
+            if (key && val) latestValues[key] = parseFloat(val);
+        });
+
+        updateDashboard(latestValues);
+        
+        // Tüm değerler varsa sunucuya kaydet ve grafiği güncelle
+        if (latestValues.sic !== undefined && latestValues.nem !== undefined && latestValues.pot !== undefined) {
+            const dataPoint = { 
+                time: new Date().toLocaleTimeString(), 
+                sic: latestValues.sic,
+                nem: latestValues.nem,
+                pot: latestValues.pot
+            };
+            
+            // 1. Sunucuya kaydet
+            saveDataToServer(dataPoint); 
+
+            // 2. Grafik verisini canlı olarak güncelle (Kaydırılan pencere efekti)
+            if (sensorChart) {
+                const datasets = sensorChart.data.datasets;
+                sensorChart.data.labels.push(dataPoint.time);
+                datasets[0].data.push(dataPoint.sic);
+                datasets[1].data.push(dataPoint.nem);
+                datasets[2].data.push(dataPoint.pot);
+                
+                // Sadece son CHART_VISIBLE_POINTS (20) noktayı göstermek için eskileri kaldır
+                if (sensorChart.data.labels.length > CHART_VISIBLE_POINTS) {
+                    sensorChart.data.labels.shift();
+                    datasets.forEach(dataset => dataset.data.shift());
+                }
+
+                sensorChart.update();
+                updatePrediction(dataPoint.sic);
+            }
+        }
+
+    } catch (e) {
+        console.error("Veri işleme hatası:", e);
+    }
+}
+
+// -----------------------------------------------------------
+// 5. DASHBOARD VE TAHMİN FONKSİYONLARI
+// -----------------------------------------------------------
+
+function updateDashboard(values) {
+    if (values.nem !== undefined) {
+      document.getElementById("soil").innerText = values.nem + "%";
+      document.getElementById("soilBar").style.width = values.nem + "%";
+    }
+
+    if (values.pump !== undefined) {
+      const pumpEl = document.getElementById("pump");
+      pumpEl.querySelector('span').nextSibling.textContent = values.pump ? " Pompa Açık" : " Pompa Kapalı";
+      pumpEl.setAttribute("data-status", values.pump ? "1" : "0");
+    }
+
+    if (values.sic !== undefined) {
+      document.getElementById("temp").innerText = values.sic.toFixed(1) + "°C";
+      const ledCard = document.getElementById("temperature");
+      ledCard.classList.remove("warm", "cold", "normal");
+      
+      let statusText = "Normal";
+      if (values.sic < 15) {
+        ledCard.classList.add("cold");
+        statusText = "Soğuk";
+      } else if (values.sic > 27) {
+        ledCard.classList.add("warm");
+        statusText = "Sıcak";
+      } else {
+        ledCard.classList.add("normal");
+      }
+      ledCard.querySelector('.status-info').firstChild.textContent = `Durum: ${statusText} `;
+    }
+
+    if (values.pot !== undefined) {
+      document.getElementById("pot").innerText = values.pot;
+      document.getElementById("potBar").style.width = (values.pot / 1023 * 100) + "%";
+    }
+}
+
+function updatePrediction(currentTemp) {
+    if (currentTemp === undefined || isNaN(currentTemp)) return;
+
+    let predictionText = currentTemp.toFixed(1) + "°C";
+
+    if (currentTemp > 25) {
+         predictionText += " (Yüksek Eğilim)";
+    } else if (currentTemp < 17) {
+         predictionText += " (Düşük Eğilim)";
+    } else {
+         predictionText += " (Stabil)";
+    }
+
+    document.getElementById("prediction-value").innerText = predictionText;
+}
+
+
+// -----------------------------------------------------------
+// 6. DARK MODE VE BAŞLANGIÇ AYARLARI
+// -----------------------------------------------------------
+
+document.getElementById('modeToggle').addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    document.getElementById('modeToggle').textContent = isDarkMode ? '☀️ Açık Tema' : '🌙 Koyu Tema';
+    
+    // Tema değişiminde grafiği de güncelle (renkler için)
+    if(sensorChart) updateChart(sensorChart.data.datasets[0].data.map((temp, index) => ({
+        time: sensorChart.data.labels[index],
+        sic: temp,
+        nem: sensorChart.data.datasets[1].data[index],
+        pot: sensorChart.data.datasets[2].data[index]
+    })));
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Tema başlangıç ayarı
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    document.getElementById('modeToggle').textContent = isDarkMode ? '☀️ Açık Tema' : '🌙 Koyu Tema';
+    
+    // Grafik bileşenini başlat
+    initializeChart();
+    
+    // Sunucudan geçmiş verileri çek ve grafiği doldur (İlk Açılış)
+    loadDataFromServer();
+});
+</script>
+
+</body>
+</html>
