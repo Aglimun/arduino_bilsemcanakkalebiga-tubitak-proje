@@ -1,247 +1,606 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <title>Arduino Veri Kayıt Simülasyonu (IndexedDB)</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        #log-area { max-height: 400px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; margin-top: 15px; background-color: #f9f9f9; }
-        .status { margin-bottom: 10px; padding: 10px; border-radius: 5px; }
-        .success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
-        .warning { background-color: #fff3cd; color: #856404; border-color: #ffeeba; }
-        button { padding: 10px 15px; cursor: pointer; }
-    </style>
+<meta charset="UTF-8">
+<title>Arduino Sensör Dashboardu | IndexedDB Kayıtlı & Grafik</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  /* GENEL STİL VE FONT */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+  :root {
+    --bg-primary: #f0f4f8;
+    --bg-secondary: #ffffff;
+    --text-color: #333333;
+    --text-muted: #6c757d;
+    --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    --accent-color: #2196f3;
+  }
+  .dark-mode {
+    --bg-primary: #1e1e2d;
+    --bg-secondary: #27293d;
+    --text-color: #ffffff;
+    --text-muted: #a0a0a0;
+    --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    --accent-color: #4CAF50;
+  }
+
+  body { 
+    font-family: 'Inter', sans-serif; 
+    background: var(--bg-primary); 
+    margin: 0; 
+    padding: 25px;
+    color: var(--text-color);
+    transition: background-color 0.3s;
+  }
+  .header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;
+  }
+  h1 { margin: 0; color: var(--text-color); font-weight: 600; }
+  .action-buttons button {
+    padding: 10px 20px; font-size: 14px; border: none;
+    border-radius: 8px; cursor: pointer; transition: background-color 0.3s, opacity 0.3s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  #connect { background-color: var(--accent-color); color: white; margin-right: 15px; }
+  #connect:hover { opacity: 0.9; }
+  #modeToggle { background-color: var(--bg-secondary); color: var(--text-color); border: 1px solid var(--text-color); }
+  #modeToggle:hover { background-color: rgba(255, 255, 255, 0.1); }
+
+  /* KART VE DÜZEN */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 25px;
+  }
+  .card-container { display: flex; gap: 25px; margin-bottom: 25px; }
+  .card { 
+    background: var(--bg-secondary); padding: 20px; border-radius: 12px; 
+    box-shadow: var(--card-shadow); width: 100%; text-align: left;
+    transition: background-color 0.3s, box-shadow 0.3s;
+  }
+  .card h3 { margin: 0 0 10px; color: var(--text-muted); font-weight: 400; font-size: 0.9em; display: flex; align-items: center; }
+  .metric-value { font-size: 2.5em; font-weight: 700; color: var(--text-color); margin-top: 5px; }
+
+  /* BARLAR VE DURUM GÖSTERGELERİ */
+  .bar-container { height: 8px; background: var(--text-muted); border-radius: 5px; overflow: hidden; margin-top: 15px; }
+  .bar-fill { height: 100%; transition: width 0.3s ease; }
+  #soilBar { background-color: #4CAF50; }
+  #potBar { background-color: #ff9800; }
+  .status-info { margin-top: 15px; font-weight: 600; display: flex; align-items: center; }
+  .status-indicator {
+    width: 10px; height: 10px; border-radius: 50%; margin-right: 8px;
+    background: #f44336; box-shadow: 0 0 8px rgba(244, 67, 54, 0.5);
+    transition: background-color 0.3s, box-shadow 0.3s;
+  }
+  #pump[data-status="1"] .status-indicator { background: #4CAF50; box-shadow: 0 0 8px rgba(76, 175, 80, 0.8); }
+  .led-card .status-indicator { width: 25px; height: 25px; margin-top: 10px; display: block; }
+  .led-card.cold .status-indicator { background: #2196f3; box-shadow: 0 0 15px #2196f3; }
+  .led-card.warm .status-indicator { background: #f44336; box-shadow: 0 0 15px #f44336; }
+  .led-card.normal .status-indicator { background: #4CAF50; box-shadow: 0 0 15px #4CAF50; }
+
+  /* YENİ EKLENEN KUTULAR İÇİN STİL */
+  .chart-area { grid-column: 1 / 2; }
+  .sidebar { grid-column: 2 / 3; display: grid; grid-template-rows: 1fr 1fr; gap: 25px; }
+  /* CHART STİLİ */
+  #sensorChart { background: var(--bg-secondary); }
+
+</style>
 </head>
-<body>
+<body class="dark-mode"> 
 
-    <h1>Arduino Veri Kayıt Simülasyonu</h1>
+<div class="header">
+  <h1>⚙️ Arduino Sensör Dashboardu</h1>
+  <div class="action-buttons">
+    <button id="connect">🔌 Bağlan</button>
+    <button id="modeToggle">☀️ Açık Tema</button>
+  </div>
+</div>
+
+<div class="dashboard-grid">
+  <div>
+    <div class="card-container">
+      <div class="card">
+        <h3>💧 TOPRAK NEMİ</h3>
+        <div id="soil" class="metric-value">0%</div>
+        <div class="bar-container"><div id="soilBar" class="bar-fill" style="width:0%"></div></div>
+        <div id="pump" data-status="0" class="status-info">
+          <span class="status-indicator"></span> Pompa Kapalı
+        </div>
+      </div>
+      
+      <div class="card">
+        <h3>⚙️ POTANSİYOMETRE</h3>
+        <div id="pot" class="metric-value">0</div>
+        <div class="bar-container"><div id="potBar" class="bar-fill" style="width:0%"></div></div>
+        <div class="status-info" style="color: var(--text-muted);">0-1023 Değeri</div>
+      </div>
+
+      <div class="card led-card" id="temperature">
+        <h3>🌡️ SICAKLIK</h3>
+        <div id="temp" class="metric-value">0°C</div>
+        <div class="status-info">
+          Durum: Normal
+          <div id="tempLed" class="status-indicator"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card chart-area">
+      <h3>📈 TÜM SENSÖR VERİLERİ GEÇMİŞİ (Son 20 Ölçüm)</h3>
+      <div id="chart-placeholder" style="height: 350px;">
+        <canvas id="sensorChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="card">
+      <h3>☀️ TAHMİN / PROGNOZ</h3>
+      <div class="metric-value" id="prediction-value">Bağlanıyor...</div>
+      <p style="color: var(--text-muted); font-size: 0.9em; margin-top: 10px;">
+        Veriler IndexedDB'den geldikten sonra hesaplanır.
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>✅ SİSTEM ÖZETİ</h3>
+      <ul style="list-style: none; padding: 0; color: var(--text-color);">
+        <li style="color: #4CAF50; margin-bottom: 5px;">Depolama Durumu: <span id="server-status">IndexedDB Hazırlanıyor...</span></li>
+        <li style="color: #ff9800; margin-bottom: 5px;">Pompa: **Otomatik Kontrol**</li>
+        <li style="color: var(--text-muted);">Bağlantı: **Seri Port Aktif**</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- SABİTLER VE DEĞİŞKENLER ---
+let port;
+let reader;
+let buffer = ""; 
+
+const CHART_VISIBLE_POINTS = 20; // Grafikte gösterilecek maksimum nokta sayısı
+
+// IndexedDB Sabitleri (150 MB limit için)
+const DB_NAME = 'SensorDataDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'LogEntries';
+// 150 MB = 157,286,400 bytes
+const MAX_STORAGE_BYTES = 157286400; 
+let db;
+
+// Grafik ve Arayüz Değişkenleri
+let sensorChart;
+const serverStatusEl = document.getElementById("server-status");
+
+// -----------------------------------------------------------
+// 1. INDEXEDDB İŞLEMLERİ (PHP YERİNE GEÇEN KISIM)
+// -----------------------------------------------------------
+
+/** IndexedDB'yi başlatır ve veritabanını açar. */
+function openDB() {
+    return new Promise((resolve, reject) => {
+        if (!window.indexedDB) {
+            serverStatusEl.textContent = "HATA: Tarayıcınız IndexedDB'yi desteklemiyor!";
+            return reject("IndexedDB not supported.");
+        }
+        
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onerror = (event) => {
+            serverStatusEl.textContent = `Hata: IndexedDB açılamadı.`;
+            reject('Database error: ' + event.target.errorCode);
+        };
+
+        request.onsuccess = (event) => {
+            db = event.target.result;
+            serverStatusEl.textContent = `IndexedDB Hazır.`;
+            resolve(db);
+        };
+
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                // 'id' autoIncrement primary key olarak FIFO için kullanılır.
+                db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+            }
+        };
+    });
+}
+
+/** Veri boyutunu yaklaşık olarak hesaplar. */
+async function calculateCurrentSize(transaction) {
+    return new Promise((resolve, reject) => {
+        const tx = transaction || db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.openCursor();
+        let totalSize = 0;
+
+        request.onsuccess = (event) => {
+            const cursor = event.target.result;
+            if (cursor) {
+                // JSON string uzunluğu ile bayt sayısını simüle etme
+                totalSize += JSON.stringify(cursor.value).length;
+                cursor.continue();
+            } else {
+                resolve(totalSize);
+            }
+        };
+        request.onerror = reject;
+    });
+}
+
+/** 150 MB limitini kontrol eder ve gerekirse en eski verileri (FIFO) siler. */
+async function enforceSizeLimit(newEntrySize) {
+    if (!db) return;
     
-    <p>
-        **Maksimum Depolama Limiti:** 150 MB (yaklaşık 157,286,400 Bayt)
-    </p>
+    let currentSize = await calculateCurrentSize();
+    let sizeNeeded = (currentSize + newEntrySize) - MAX_STORAGE_BYTES;
 
-    <div class="status warning" id="status-display">IndexedDB başlatılıyor...</div>
+    if (sizeNeeded > 0) {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.openCursor();
+        let deletionCount = 0;
 
-    <button onclick="simulateAndStoreData()">Yeni Veri Ekle ve Kontrol Et (Simülasyon)</button>
-    <button onclick="displayAllData()">Tüm Kayıtları Yenile</button>
-
-    <h2>Kayıtlar</h2>
-    <div id="log-area">Veriler buraya yüklenecek...</div>
-
-    <script>
-        // Sabitler
-        const DB_NAME = 'ProjectDataLogger';
-        const DB_VERSION = 1;
-        const STORE_NAME = 'LogEntries';
-        // 150 MB = 150 * 1024 * 1024 = 157,286,400 bytes
-        const MAX_STORAGE_BYTES = 157286400; 
-
-        let db;
-        const statusDisplay = document.getElementById('status-display');
-        const logArea = document.getElementById('log-area');
-
-        // --- IndexedDB Başlatma ---
-        function openDB() {
-            return new Promise((resolve, reject) => {
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-                request.onerror = (event) => {
-                    statusDisplay.textContent = `Hata: IndexedDB açılamadı. Tarayıcınız desteklemiyor veya izin yok.`;
-                    statusDisplay.className = 'status warning';
-                    reject('Database error: ' + event.target.errorCode);
-                };
-
-                request.onsuccess = (event) => {
-                    db = event.target.result;
-                    statusDisplay.textContent = `IndexedDB hazır. Veri tabanı açıldı.`;
-                    statusDisplay.className = 'status success';
-                    resolve(db);
-                };
-
-                request.onupgradeneeded = (event) => {
-                    const db = event.target.result;
-                    if (!db.objectStoreNames.contains(STORE_NAME)) {
-                        // "id" alanı otomatik artan primary key, "timestamp" ise sıralama için kullanılacak.
-                        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-                        store.createIndex('timestamp', 'timestamp', { unique: false });
-                    }
-                };
-            });
-        }
-
-        // --- Depolama Boyutunu Hesaplama (Basitleştirilmiş) ---
-        async function calculateCurrentSize(transaction) {
-            return new Promise(async (resolve, reject) => {
-                const tx = transaction || db.transaction(STORE_NAME, 'readonly');
-                const store = tx.objectStore(STORE_NAME);
-                const request = store.openCursor();
-                
-                let totalSize = 0;
-
-                request.onsuccess = (event) => {
-                    const cursor = event.target.result;
-                    if (cursor) {
-                        // Veriyi JSON string'ine çevirip uzunluğunu alarak boyut simülasyonu
-                        const dataSize = JSON.stringify(cursor.value).length;
-                        totalSize += dataSize;
-                        cursor.continue();
-                    } else {
-                        resolve(totalSize);
-                    }
-                };
-
-                request.onerror = (event) => {
-                    reject('Boyut hesaplanırken hata: ' + event.target.errorCode);
-                };
-            });
-        }
-
-        // --- FIFO (İlk Giren İlk Çıkar) Silme Mantığı ---
-        async function enforceSizeLimit(newEntrySize) {
-            const tx = db.transaction(STORE_NAME, 'readwrite');
-            const store = tx.objectStore(STORE_NAME);
-            
-            let currentSize = await calculateCurrentSize(tx);
-            let sizeNeeded = (currentSize + newEntrySize) - MAX_STORAGE_BYTES;
-            let deletedBytes = 0;
-            let deletionCount = 0;
-
-            if (sizeNeeded > 0) {
-                // En eski (en küçük id'ye sahip) kayıtları silmek için bir cursor açıyoruz
-                const request = store.openCursor();
-
-                await new Promise((resolve, reject) => {
-                    request.onsuccess = (event) => {
-                        const cursor = event.target.result;
-                        
-                        if (cursor && sizeNeeded > 0) {
-                            const entryId = cursor.value.id;
-                            const entrySize = JSON.stringify(cursor.value).length;
-                            
-                            // Kaydı sil
-                            store.delete(entryId).onsuccess = () => {
-                                sizeNeeded -= entrySize;
-                                deletedBytes += entrySize;
-                                deletionCount++;
-                                cursor.continue(); // Bir sonraki kayda geç
-                            };
-                            store.delete(entryId).onerror = reject;
-
-                        } else {
-                            resolve(); // İşlem bitti
-                        }
-                    };
-                    request.onerror = reject;
-                });
-
-                console.log(`Limit aşıldı! ${deletionCount} adet en eski kayıt silindi. Tahmini silinen boyut: ${Math.round(deletedBytes / 1024)} KB`);
-                statusDisplay.textContent = `UYARI: 150MB limit aşıldı! ${deletionCount} en eski kayıt silindi. Yeni kayıt eklenecek.`;
-                statusDisplay.className = 'status warning';
-            }
-            
-            // Son boyutu tekrar hesaplayıp kullanıcıya gösteriyoruz
-            currentSize = await calculateCurrentSize();
-            const currentSizeMB = (currentSize / 1048576).toFixed(2);
-            logArea.prepend(document.createElement('br'));
-            logArea.prepend(document.createTextNode(`[GÜNCEL DURUM] Depolama Boyutu: ${currentSizeMB} MB / 150 MB. Silinen Kayıt: ${deletionCount}`));
-
-        }
-
-        // --- Yeni Veri Oluşturma ve Ekleme ---
-        async function simulateAndStoreData() {
-            if (!db) {
-                statusDisplay.textContent = "Veritabanı henüz hazır değil. Lütfen bekleyin.";
-                return;
-            }
-
-            // Simüle edilmiş bir veri paketi oluştur
-            const simulatedData = {
-                timestamp: new Date().toISOString(),
-                // Örnek sensör verisi: Sıcaklık, Nem, Basınç (Rastgele değerler)
-                temperature: (Math.random() * 20 + 20).toFixed(2), 
-                humidity: (Math.random() * 40 + 40).toFixed(2),
-                pressure: (Math.random() * 500 + 950).toFixed(2),
-                // Boyutu artırmak için rastgele büyük bir metin ekle (1 KB'tan biraz fazla)
-                dummyPayload: 'X'.repeat(Math.floor(Math.random() * 1024) + 50) 
-            };
-            
-            const newEntrySize = JSON.stringify(simulatedData).length;
-
-            try {
-                // 1. Boyut kontrolü ve FIFO silme işlemi
-                await enforceSizeLimit(newEntrySize);
-
-                // 2. Yeni veriyi ekleme
-                const tx = db.transaction(STORE_NAME, 'readwrite');
-                const store = tx.objectStore(STORE_NAME);
-                
-                const request = store.add(simulatedData);
-
-                request.onsuccess = () => {
-                    const currentSizeMB = (newEntrySize / 1048576).toFixed(6);
-                    statusDisplay.textContent = `Yeni kayıt (ID: ${request.result}) başarıyla eklendi. Tahmini boyut: ${currentSizeMB} MB`;
-                    statusDisplay.className = 'status success';
-                    displayAllData(); // Verileri yeniden yükle
-                };
-
-                request.onerror = (event) => {
-                    statusDisplay.textContent = `Kayıt eklenirken hata: ${event.target.error}`;
-                    statusDisplay.className = 'status warning';
-                    console.error("Kayıt ekleme hatası:", event.target.error);
-                };
-            } catch (error) {
-                console.error("Genel işlem hatası:", error);
-            }
-        }
-
-        // --- Verileri Görüntüleme ---
-        function displayAllData() {
-            if (!db) return;
-
-            const tx = db.transaction(STORE_NAME, 'readonly');
-            const store = tx.objectStore(STORE_NAME);
-            const request = store.openCursor(null, 'prev'); // En son ekleneni başta göstermek için ters sıra
-
-            let html = '';
-            let count = 0;
-
+        await new Promise((resolve, reject) => {
             request.onsuccess = (event) => {
                 const cursor = event.target.result;
-                if (cursor) {
-                    const data = cursor.value;
-                    const dataSizeKB = (JSON.stringify(data).length / 1024).toFixed(2);
-                    html += `
-                        <p>
-                            <strong>ID:</strong> ${data.id} | 
-                            <strong>Zaman:</strong> ${new Date(data.timestamp).toLocaleTimeString()} | 
-                            <strong>Sıcaklık:</strong> ${data.temperature}°C | 
-                            <strong>Nem:</strong> ${data.humidity}% | 
-                            <strong>Boyut:</strong> ${dataSizeKB} KB
-                        </p>
-                    `;
-                    count++;
-                    cursor.continue();
+                if (cursor && sizeNeeded > 0) {
+                    const entryId = cursor.value.id;
+                    const entrySize = JSON.stringify(cursor.value).length;
+                    
+                    // En eski kaydı sil
+                    store.delete(entryId).onsuccess = () => {
+                        sizeNeeded -= entrySize;
+                        deletionCount++;
+                        cursor.continue(); 
+                    };
+                    store.delete(entryId).onerror = reject;
                 } else {
-                    logArea.innerHTML = html || 'Henüz bir kayıt yok.';
-                    calculateCurrentSize().then(size => {
-                        const currentSizeMB = (size / 1048576).toFixed(2);
-                        logArea.insertAdjacentHTML('afterbegin', `
-                            <p><strong>Toplam Kayıt Sayısı: ${count}</strong> | <strong>Tahmini Toplam Boyut: ${currentSizeMB} MB</strong></p>
-                            <hr>
-                        `);
-                    });
+                    resolve();
                 }
             };
+            request.onerror = reject;
+        });
 
-            request.onerror = () => {
-                logArea.innerHTML = 'Veriler yüklenirken bir hata oluştu.';
+        serverStatusEl.textContent = `Limit Aşıldı! ${deletionCount} kayıt silinip yer açıldı.`;
+    }
+}
+
+/** Yeni veri noktasını IndexedDB'ye kaydeder. */
+async function saveDataToIndexedDB(dataPoint) {
+    if (!db) return;
+
+    try {
+        const newEntrySize = JSON.stringify(dataPoint).length;
+        
+        // 1. Limit kontrolü ve FIFO silme işlemi
+        await enforceSizeLimit(newEntrySize);
+
+        // 2. Yeni veriyi ekleme
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        
+        const request = store.add(dataPoint);
+
+        request.onsuccess = async () => {
+            serverStatusEl.textContent = `IndexedDB Hazır. (${(await calculateCurrentSize() / 1048576).toFixed(2)} MB)`;
+        };
+
+        request.onerror = (event) => {
+            console.error("Kayıt ekleme hatası:", event.target.error);
+        };
+    } catch (error) {
+        console.error("IndexedDB işlem hatası:", error);
+    }
+}
+
+/** Tüm geçmiş verileri IndexedDB'den çeker. */
+async function loadDataFromIndexedDB() {
+    if (!db) return [];
+
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.getAll(); // Tüm veriyi çek
+
+        request.onsuccess = (event) => {
+            const history = event.target.result;
+            // history dizisi [en eski, ..., en yeni] şeklinde gelir.
+            
+            // Sadece CHART_VISIBLE_POINTS kadar en son veriyi al
+            const latestHistory = history.slice(-CHART_VISIBLE_POINTS); 
+
+            if (history.length > 0) {
+                updatePrediction(history[history.length - 1].sic);
+            }
+            resolve(latestHistory);
+        };
+        request.onerror = reject;
+    });
+}
+
+// -----------------------------------------------------------
+// 2. CHART.JS İŞLEMLERİ
+// -----------------------------------------------------------
+
+function initializeChart() {
+    const ctx = document.getElementById('sensorChart').getContext('2d');
+    sensorChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [], 
+            datasets: [{
+                label: 'Sıcaklık (°C)',
+                data: [],
+                borderColor: '#f44336', 
+                tension: 0.2, fill: false, yAxisID: 'yTemp'
+            },
+            {
+                label: 'Nem (%)',
+                data: [],
+                borderColor: '#2196f3', 
+                tension: 0.2, fill: false, yAxisID: 'yNemPot'
+            },
+            {
+                label: 'Potansiyometre (0-1023)',
+                data: [],
+                borderColor: '#ff9800', 
+                tension: 0.2, fill: false, yAxisID: 'yNemPot'
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: {
+                    display: true, title: { display: true, text: 'Zaman' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                },
+                yTemp: {
+                    type: 'linear', display: true, position: 'left',
+                    title: { display: true, text: 'Sıcaklık (°C)' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                },
+                yNemPot: {
+                    type: 'linear', display: true, position: 'right',
+                    title: { display: true, text: 'Nem/Pot (0-1023)' },
+                    min: 0, max: 1023,
+                    grid: { drawOnChartArea: false }
+                }
+            },
+            plugins: {
+                legend: { labels: { color: 'white' } } 
+            }
+        }
+    });
+    // İlk yüklemede grafiği IndexedDB verileriyle doldur
+    refreshChartFromDB();
+}
+
+/** IndexedDB'den gelen verilerle grafiği günceller. */
+function updateChart(history) {
+    if (!sensorChart) return;
+    
+    // Tema renklerini al ve uygula
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    const color = isDarkMode ? 'white' : 'black';
+    
+    // Eksen renklerini güncelle
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    sensorChart.options.scales.x.ticks = { color: color };
+    sensorChart.options.scales.x.grid = { color: gridColor };
+    sensorChart.options.scales.yTemp.ticks = { color: color };
+    sensorChart.options.scales.yTemp.grid = { color: gridColor };
+    sensorChart.options.scales.yNemPot.ticks = { color: color };
+    sensorChart.options.plugins.legend.labels.color = color;
+
+    // Grafik verilerini hazırla (Sadece son CHART_VISIBLE_POINTS kadarını kullanırız)
+    const labels = history.map(d => d.time);
+    const nemData = history.map(d => d.nem);
+    const sicData = history.map(d => d.sic);
+    const potData = history.map(d => d.pot);
+
+    sensorChart.data.labels = labels;
+    sensorChart.data.datasets[0].data = sicData;
+    sensorChart.data.datasets[1].data = nemData;
+    sensorChart.data.datasets[2].data = potData;
+    
+    sensorChart.update();
+}
+
+/** IndexedDB'den verileri çeker ve grafiği doldurur. */
+async function refreshChartFromDB() {
+    try {
+        const history = await loadDataFromIndexedDB();
+        updateChart(history);
+    } catch (e) {
+        console.error("Grafiği IndexedDB'den doldurma hatası:", e);
+    }
+}
+
+
+// -----------------------------------------------------------
+// 3. ARDUINO SERİ PORT İŞLEMLERİ (DEĞİŞMEDİ)
+// -----------------------------------------------------------
+
+document.getElementById("connect").addEventListener("click", async () => {
+    if ("serial" in navigator) {
+        try {
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 9600 });
+            document.getElementById("connect").innerText = "Bağlanıldı (Veri Geliyor...)";
+            const textDecoder = new TextDecoderStream();
+            port.readable.pipeTo(textDecoder.writable);
+            reader = textDecoder.readable.getReader();
+            readLoop();
+        } catch (err) {
+            alert("Bağlantı Hatası: " + err);
+        }
+    } else {
+        alert("Tarayıcınız Seri Port API'ını desteklemiyor. (Sadece Chrome/Edge'de çalışır.)");
+    }
+});
+
+async function readLoop() {
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) {
+            buffer += value;
+            
+            if (buffer.includes('\n')) {
+                let lines = buffer.split('\n');
+                buffer = lines.pop(); 
+
+                // GECİKME ÇÖZÜMÜ: Sadece en son geçerli veriyi işle 
+                for (let i = lines.length - 1; i >= 0; i--) {
+                    const line = lines[i].trim();
+                    if (line.includes("nem:")) {
+                        processLine(line);
+                        break; 
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------
+// 4. VERİ İŞLEME VE KAYIT (DEĞİŞTİRİLDİ)
+// -----------------------------------------------------------
+
+function processLine(data) {
+    try {
+        const parts = data.split(';');
+        let latestValues = {}; 
+
+        parts.forEach(part => {
+            const [key, val] = part.split(':');
+            if (key && val) latestValues[key] = parseFloat(val);
+        });
+
+        updateDashboard(latestValues);
+        
+        // Tüm değerler varsa IndexedDB'ye kaydet ve grafiği canlı güncelle
+        if (latestValues.sic !== undefined && latestValues.nem !== undefined && latestValues.pot !== undefined) {
+            const dataPoint = { 
+                // IndexedDB'de tutulacak veri yapısı
+                time: new Date().toLocaleTimeString(), 
+                sic: latestValues.sic,
+                nem: latestValues.nem,
+                pot: latestValues.pot
             };
+            
+            // 1. IndexedDB'ye kaydet (FIFO mantığı ile)
+            saveDataToIndexedDB(dataPoint); 
+
+            // 2. Grafik verisini canlı olarak güncelle
+            if (sensorChart) {
+                const datasets = sensorChart.data.datasets;
+                sensorChart.data.labels.push(dataPoint.time);
+                datasets[0].data.push(dataPoint.sic);
+                datasets[1].data.push(dataPoint.nem);
+                datasets[2].data.push(dataPoint.pot);
+                
+                // Sadece son CHART_VISIBLE_POINTS (20) noktayı göstermek için eskileri kaldır
+                if (sensorChart.data.labels.length > CHART_VISIBLE_POINTS) {
+                    sensorChart.data.labels.shift();
+                    datasets.forEach(dataset => dataset.data.shift());
+                }
+
+                sensorChart.update();
+                updatePrediction(dataPoint.sic);
+            }
         }
 
-        // Sayfa yüklendiğinde veritabanını başlat
-        openDB().then(displayAllData);
+    } catch (e) {
+        console.error("Veri işleme hatası:", e);
+    }
+}
 
-    </script>
+// -----------------------------------------------------------
+// 5. DASHBOARD VE TAHMİN FONKSİYONLARI (DEĞİŞMEDİ)
+// -----------------------------------------------------------
+
+function updateDashboard(values) {
+    if (values.nem !== undefined) {
+      document.getElementById("soil").innerText = values.nem + "%";
+      document.getElementById("soilBar").style.width = values.nem + "%";
+    }
+
+    if (values.pump !== undefined) {
+      const pumpEl = document.getElementById("pump");
+      pumpEl.querySelector('span').nextSibling.textContent = values.pump ? " Pompa Açık" : " Pompa Kapalı";
+      pumpEl.setAttribute("data-status", values.pump ? "1" : "0");
+    }
+
+    if (values.sic !== undefined) {
+      document.getElementById("temp").innerText = values.sic.toFixed(1) + "°C";
+      const ledCard = document.getElementById("temperature");
+      ledCard.classList.remove("warm", "cold", "normal");
+      
+      let statusText = "Normal";
+      if (values.sic < 15) {
+        ledCard.classList.add("cold");
+        statusText = "Soğuk";
+      } else if (values.sic > 27) {
+        ledCard.classList.add("warm");
+        statusText = "Sıcak";
+      } else {
+        ledCard.classList.add("normal");
+      }
+      ledCard.querySelector('.status-info').firstChild.textContent = `Durum: ${statusText} `;
+    }
+
+    if (values.pot !== undefined) {
+      document.getElementById("pot").innerText = values.pot;
+      document.getElementById("potBar").style.width = (values.pot / 1023 * 100) + "%";
+    }
+}
+
+function updatePrediction(currentTemp) {
+    if (currentTemp === undefined || isNaN(currentTemp)) return;
+
+    let predictionText = currentTemp.toFixed(1) + "°C";
+
+    if (currentTemp > 25) {
+          predictionText += " (Yüksek Eğilim)";
+    } else if (currentTemp < 17) {
+          predictionText += " (Düşük Eğilim)";
+    } else {
+          predictionText += " (Stabil)";
+    }
+
+    document.getElementById("prediction-value").innerText = predictionText;
+}
+
+
+// -----------------------------------------------------------
+// 6. DARK MODE VE BAŞLANGIÇ AYARLARI
+// -----------------------------------------------------------
+
+document.getElementById('modeToggle').addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    document.getElementById('modeToggle').textContent = isDarkMode ? '☀️ Açık Tema' : '🌙 Koyu Tema';
+    
+    // Tema değişiminde grafiği de güncelle (renkler için)
+    refreshChartFromDB();
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. IndexedDB'yi başlat
+    await openDB();
+
+    // 2. Tema başlangıç ayarı
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    document.getElementById('modeToggle').textContent = isDarkMode ? '☀️ Açık Tema' : '🌙 Koyu Tema';
+    
+    // 3. Grafik bileşenini başlat ve IndexedDB'den verileri yükle
+    initializeChart();
+});
+</script>
 
 </body>
 </html>
