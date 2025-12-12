@@ -2,37 +2,37 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Arduino Sensör Dashboardu | IndexedDB Kayıtlı & Grafik</title>
+<title>Arduino Sensör Dashboardu | RAM Bellek & Grafik</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
-/* GENEL STİL VE FONT */
+    /* GENEL STİL VE FONT */
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap');
     :root {
         /* Açık Tema */
-        --bg-primary: #f8f9fa; /* Çok Açık Gri */
+        --bg-primary: #f8f9fa; 
         --bg-secondary: #ffffff;
-        --text-color: #212529; /* Koyu Metin */
+        --text-color: #212529; 
         --text-muted: #6c757d;
         --card-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-        --accent-color: #007bff; /* Mavi (Prime Aksan) */
+        --accent-color: #007bff; 
         --border-color: #e9ecef;
     }
     .dark-mode {
         /* Koyu Tema */
-        --bg-primary: #121212; /* Derin Siyah */
-        --bg-secondary: #1f1f1f; /* Koyu Kart Arka Planı */
-        --text-color: #e0e0e0; /* Açık Metin */
+        --bg-primary: #121212; 
+        --bg-secondary: #1f1f1f; 
+        --text-color: #e0e0e0; 
         --text-muted: #a0a0a0;
         --card-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-        --accent-color: #28a745; /* Yeşil (Prime Aksan) */
+        --accent-color: #28a745; 
         --border-color: #333333;
     }
 
     body { 
-        font-family: 'Poppins', sans-serif; /* Daha Modern Font */
+        font-family: 'Poppins', sans-serif; 
         background: var(--bg-primary); 
         margin: 0; 
-        padding: 30px; /* Daha fazla boşluk */
+        padding: 30px; 
         color: var(--text-color);
         transition: background-color 0.4s ease, color 0.4s ease;
     }
@@ -44,7 +44,7 @@
     h1 { margin: 0; color: var(--text-color); font-weight: 700; font-size: 1.8em; }
     .action-buttons button {
         padding: 12px 25px; font-size: 14px; border: none;
-        border-radius: 50px; /* Yuvarlak Buton */
+        border-radius: 50px; 
         cursor: pointer; transition: background-color 0.3s, transform 0.2s;
         box-shadow: 0 4px 10px rgba(0,0,0,0.15);
         font-weight: 600;
@@ -76,9 +76,9 @@
     /* KART VE DÜZEN */
     .dashboard-grid {
         display: grid;
-        grid-template-columns: 3fr 1fr; /* Grafik alanı biraz daha genişledi */
+        grid-template-columns: 3fr 1fr; 
         gap: 30px;
-        max-width: 1400px; /* Maksimum genişlik */
+        max-width: 1400px; 
         margin: 0 auto;
     }
     .card-container { display: flex; gap: 30px; margin-bottom: 30px; }
@@ -87,7 +87,7 @@
         box-shadow: var(--card-shadow); 
         width: 100%; 
         transition: background-color 0.4s ease, box-shadow 0.4s ease;
-        border: 1px solid transparent; /* Kart sınırlarını belirginleştirmek için */
+        border: 1px solid transparent; 
     }
     .card:hover {
         border-color: var(--accent-color);
@@ -98,7 +98,7 @@
         color: var(--text-muted); 
         font-weight: 600; 
         font-size: 0.8em; 
-        text-transform: uppercase; /* Başlıklar büyük harf */
+        text-transform: uppercase; 
         letter-spacing: 1px;
     }
     .metric-value { 
@@ -112,8 +112,8 @@
     /* BARLAR VE DURUM GÖSTERGELERİ */
     .bar-container { height: 6px; background: var(--border-color); border-radius: 3px; overflow: hidden; margin-top: 15px; }
     .bar-fill { height: 100%; transition: width 0.3s ease; }
-    #soilBar { background-color: #28a745; } /* Yeşil */
-    #potBar { background-color: #ffc107; } /* Sarı */
+    #soilBar { background-color: #28a745; } 
+    #potBar { background-color: #ffc107; } 
     
     .status-info { 
         margin-top: 20px; 
@@ -124,7 +124,7 @@
     }
     .status-indicator {
         width: 12px; height: 12px; border-radius: 50%; margin-right: 10px;
-        background: #dc3545; /* Kırmızı - Varsayılan Kapalı */
+        background: #dc3545; 
         box-shadow: 0 0 10px rgba(220, 53, 69, 0.5);
         transition: background-color 0.3s, box-shadow 0.3s;
     }
@@ -154,14 +154,14 @@
     .sidebar { grid-column: 2 / 3; display: flex; flex-direction: column; gap: 30px; }
     
     /* CHART STİLİ */
-    #chart-placeholder { height: 400px; } /* Grafiği biraz büyüttük */
+    #chart-placeholder { height: 400px; } 
     #sensorChart { 
         background: var(--bg-secondary); 
     }
 
     /* SİSTEM ÖZETİ VE TAHMİN KARTI STİLLERİ */
     .sidebar .card {
-        flex-grow: 1; /* Yan kutuların yüksekliği doldurması için */
+        flex-grow: 1; 
     }
     #prediction-value { 
         font-size: 2em; 
@@ -223,7 +223,7 @@
 
     <div class="card chart-area">
       <h3>📈 TÜM SENSÖR VERİLERİ GEÇMİŞİ (Son 20 Ölçüm)</h3>
-      <div id="chart-placeholder" style="height: 350px;">
+      <div id="chart-placeholder" style="height: 400px;">
         <canvas id="sensorChart"></canvas>
       </div>
     </div>
@@ -232,18 +232,18 @@
   <div class="sidebar">
     <div class="card">
       <h3>☀️ TAHMİN / PROGNOZ</h3>
-      <div class="metric-value" id="prediction-value">Bağlanıyor...</div>
+      <div class="metric-value" id="prediction-value">Veri bekleniyor...</div>
       <p style="color: var(--text-muted); font-size: 0.9em; margin-top: 10px;">
-        Veriler IndexedDB'den geldikten sonra hesaplanır.
+        Mevcut Sıcaklık verisine göre durum tahmini yapılır.
       </p>
     </div>
 
     <div class="card">
       <h3>✅ SİSTEM ÖZETİ</h3>
       <ul style="list-style: none; padding: 0; color: var(--text-color);">
-        <li style="color: #4CAF50; margin-bottom: 5px;">Depolama Durumu: <span id="server-status">IndexedDB Hazırlanıyor...</span></li>
-        <li style="color: #ff9800; margin-bottom: 5px;">Pompa: **Otomatik Kontrol**</li>
-        <li style="color: var(--text-muted);">Bağlantı: **Seri Port Aktif**</li>
+        <li style="color: #007bff; margin-bottom: 5px;">Geçmiş Veri: <span id="data-status">RAM Bellekte Tutuluyor</span></li>
+        <li style="color: #28a745; margin-bottom: 5px;">Pompa: **Otomatik Kontrol**</li>
+        <li style="color: var(--text-muted);">Bağlantı: **Bekleniyor**</li>
       </ul>
     </div>
   </div>
@@ -256,169 +256,18 @@ let reader;
 let buffer = ""; 
 
 const CHART_VISIBLE_POINTS = 20; // Grafikte gösterilecek maksimum nokta sayısı
+const MAX_RAM_POINTS = 50000; // 150MB limiti yaklaşık 50.000 veri noktasına denk gelir (Her veri noktası ~3KB varsayımıyla).
+// Bu kodda RAM limiti yerine sadece görsel amaçlı CHART_VISIBLE_POINTS kullanılacaktır.
 
-// IndexedDB Sabitleri (150 MB limit için)
-const DB_NAME = 'SensorDataDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'LogEntries';
-// 150 MB = 157,286,400 bytes
-const MAX_STORAGE_BYTES = 157286400; 
-let db;
+// RAM Bellek Dizisi
+let sensorHistory = []; 
 
 // Grafik ve Arayüz Değişkenleri
 let sensorChart;
-const serverStatusEl = document.getElementById("server-status");
+
 
 // -----------------------------------------------------------
-// 1. INDEXEDDB İŞLEMLERİ (PHP YERİNE GEÇEN KISIM)
-// -----------------------------------------------------------
-
-/** IndexedDB'yi başlatır ve veritabanını açar. */
-function openDB() {
-    return new Promise((resolve, reject) => {
-        if (!window.indexedDB) {
-            serverStatusEl.textContent = "HATA: Tarayıcınız IndexedDB'yi desteklemiyor!";
-            return reject("IndexedDB not supported.");
-        }
-        
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-        request.onerror = (event) => {
-            serverStatusEl.textContent = `Hata: IndexedDB açılamadı.`;
-            reject('Database error: ' + event.target.errorCode);
-        };
-
-        request.onsuccess = (event) => {
-            db = event.target.result;
-            serverStatusEl.textContent = `IndexedDB Hazır.`;
-            resolve(db);
-        };
-
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                // 'id' autoIncrement primary key olarak FIFO için kullanılır.
-                db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-            }
-        };
-    });
-}
-
-/** Veri boyutunu yaklaşık olarak hesaplar. */
-async function calculateCurrentSize(transaction) {
-    return new Promise((resolve, reject) => {
-        const tx = transaction || db.transaction(STORE_NAME, 'readonly');
-        const store = tx.objectStore(STORE_NAME);
-        const request = store.openCursor();
-        let totalSize = 0;
-
-        request.onsuccess = (event) => {
-            const cursor = event.target.result;
-            if (cursor) {
-                // JSON string uzunluğu ile bayt sayısını simüle etme
-                totalSize += JSON.stringify(cursor.value).length;
-                cursor.continue();
-            } else {
-                resolve(totalSize);
-            }
-        };
-        request.onerror = reject;
-    });
-}
-
-/** 150 MB limitini kontrol eder ve gerekirse en eski verileri (FIFO) siler. */
-async function enforceSizeLimit(newEntrySize) {
-    if (!db) return;
-    
-    let currentSize = await calculateCurrentSize();
-    let sizeNeeded = (currentSize + newEntrySize) - MAX_STORAGE_BYTES;
-
-    if (sizeNeeded > 0) {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        const request = store.openCursor();
-        let deletionCount = 0;
-
-        await new Promise((resolve, reject) => {
-            request.onsuccess = (event) => {
-                const cursor = event.target.result;
-                if (cursor && sizeNeeded > 0) {
-                    const entryId = cursor.value.id;
-                    const entrySize = JSON.stringify(cursor.value).length;
-                    
-                    // En eski kaydı sil
-                    store.delete(entryId).onsuccess = () => {
-                        sizeNeeded -= entrySize;
-                        deletionCount++;
-                        cursor.continue(); 
-                    };
-                    store.delete(entryId).onerror = reject;
-                } else {
-                    resolve();
-                }
-            };
-            request.onerror = reject;
-        });
-
-        serverStatusEl.textContent = `Limit Aşıldı! ${deletionCount} kayıt silinip yer açıldı.`;
-    }
-}
-
-/** Yeni veri noktasını IndexedDB'ye kaydeder. */
-async function saveDataToIndexedDB(dataPoint) {
-    if (!db) return;
-
-    try {
-        const newEntrySize = JSON.stringify(dataPoint).length;
-        
-        // 1. Limit kontrolü ve FIFO silme işlemi
-        await enforceSizeLimit(newEntrySize);
-
-        // 2. Yeni veriyi ekleme
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        
-        const request = store.add(dataPoint);
-
-        request.onsuccess = async () => {
-            serverStatusEl.textContent = `IndexedDB Hazır. (${(await calculateCurrentSize() / 1048576).toFixed(2)} MB)`;
-        };
-
-        request.onerror = (event) => {
-            console.error("Kayıt ekleme hatası:", event.target.error);
-        };
-    } catch (error) {
-        console.error("IndexedDB işlem hatası:", error);
-    }
-}
-
-/** Tüm geçmiş verileri IndexedDB'den çeker. */
-async function loadDataFromIndexedDB() {
-    if (!db) return [];
-
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readonly');
-        const store = tx.objectStore(STORE_NAME);
-        const request = store.getAll(); // Tüm veriyi çek
-
-        request.onsuccess = (event) => {
-            const history = event.target.result;
-            // history dizisi [en eski, ..., en yeni] şeklinde gelir.
-            
-            // Sadece CHART_VISIBLE_POINTS kadar en son veriyi al
-            const latestHistory = history.slice(-CHART_VISIBLE_POINTS); 
-
-            if (history.length > 0) {
-                updatePrediction(history[history.length - 1].sic);
-            }
-            resolve(latestHistory);
-        };
-        request.onerror = reject;
-    });
-}
-
-// -----------------------------------------------------------
-// 2. CHART.JS İŞLEMLERİ
+// 1. CHART.JS İŞLEMLERİ
 // -----------------------------------------------------------
 
 function initializeChart() {
@@ -430,20 +279,20 @@ function initializeChart() {
             datasets: [{
                 label: 'Sıcaklık (°C)',
                 data: [],
-                borderColor: '#f44336', 
-                tension: 0.2, fill: false, yAxisID: 'yTemp'
+                borderColor: '#dc3545', // Kırmızı
+                tension: 0.4, fill: false, yAxisID: 'yTemp'
             },
             {
                 label: 'Nem (%)',
                 data: [],
-                borderColor: '#2196f3', 
-                tension: 0.2, fill: false, yAxisID: 'yNemPot'
+                borderColor: '#007bff', // Mavi
+                tension: 0.4, fill: false, yAxisID: 'yNemPot'
             },
             {
                 label: 'Potansiyometre (0-1023)',
                 data: [],
-                borderColor: '#ff9800', 
-                tension: 0.2, fill: false, yAxisID: 'yNemPot'
+                borderColor: '#ffc107', // Sarı
+                tension: 0.4, fill: false, yAxisID: 'yNemPot'
             }]
         },
         options: {
@@ -451,12 +300,12 @@ function initializeChart() {
             scales: {
                 x: {
                     display: true, title: { display: true, text: 'Zaman' },
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    grid: { color: document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }
                 },
                 yTemp: {
                     type: 'linear', display: true, position: 'left',
                     title: { display: true, text: 'Sıcaklık (°C)' },
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                    grid: { color: document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }
                 },
                 yNemPot: {
                     type: 'linear', display: true, position: 'right',
@@ -466,24 +315,21 @@ function initializeChart() {
                 }
             },
             plugins: {
-                legend: { labels: { color: 'white' } } 
+                legend: { labels: { color: document.body.classList.contains('dark-mode') ? 'white' : 'black' } } 
             }
         }
     });
-    // İlk yüklemede grafiği IndexedDB verileriyle doldur
-    refreshChartFromDB();
 }
 
-/** IndexedDB'den gelen verilerle grafiği günceller. */
-function updateChart(history) {
+/** Grafiği RAM'deki sensorHistory dizisindeki verilerle günceller. */
+function updateChartLive() {
     if (!sensorChart) return;
-    
+
     // Tema renklerini al ve uygula
     const isDarkMode = document.body.classList.contains('dark-mode');
     const color = isDarkMode ? 'white' : 'black';
-    
-    // Eksen renklerini güncelle
     const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
     sensorChart.options.scales.x.ticks = { color: color };
     sensorChart.options.scales.x.grid = { color: gridColor };
     sensorChart.options.scales.yTemp.ticks = { color: color };
@@ -491,33 +337,22 @@ function updateChart(history) {
     sensorChart.options.scales.yNemPot.ticks = { color: color };
     sensorChart.options.plugins.legend.labels.color = color;
 
-    // Grafik verilerini hazırla (Sadece son CHART_VISIBLE_POINTS kadarını kullanırız)
-    const labels = history.map(d => d.time);
-    const nemData = history.map(d => d.nem);
-    const sicData = history.map(d => d.sic);
-    const potData = history.map(d => d.pot);
 
-    sensorChart.data.labels = labels;
-    sensorChart.data.datasets[0].data = sicData;
-    sensorChart.data.datasets[1].data = nemData;
-    sensorChart.data.datasets[2].data = potData;
+    // Sadece grafikte görünmesi gereken son noktaları çek (Canlı kayan pencere)
+    const datasets = sensorChart.data.datasets;
+    const latestHistory = sensorHistory.slice(-CHART_VISIBLE_POINTS);
     
-    sensorChart.update();
-}
+    sensorChart.data.labels = latestHistory.map(d => d.time);
+    datasets[0].data = latestHistory.map(d => d.sic);
+    datasets[1].data = latestHistory.map(d => d.nem);
+    datasets[2].data = latestHistory.map(d => d.pot);
 
-/** IndexedDB'den verileri çeker ve grafiği doldurur. */
-async function refreshChartFromDB() {
-    try {
-        const history = await loadDataFromIndexedDB();
-        updateChart(history);
-    } catch (e) {
-        console.error("Grafiği IndexedDB'den doldurma hatası:", e);
-    }
+    sensorChart.update();
 }
 
 
 // -----------------------------------------------------------
-// 3. ARDUINO SERİ PORT İŞLEMLERİ (DEĞİŞMEDİ)
+// 2. ARDUINO SERİ PORT İŞLEMLERİ
 // -----------------------------------------------------------
 
 document.getElementById("connect").addEventListener("click", async () => {
@@ -526,6 +361,7 @@ document.getElementById("connect").addEventListener("click", async () => {
             port = await navigator.serial.requestPort();
             await port.open({ baudRate: 9600 });
             document.getElementById("connect").innerText = "Bağlanıldı (Veri Geliyor...)";
+            document.querySelector('.sidebar li:last-child').innerHTML = 'Bağlantı: **Seri Port Aktif**';
             const textDecoder = new TextDecoderStream();
             port.readable.pipeTo(textDecoder.writable);
             reader = textDecoder.readable.getReader();
@@ -549,7 +385,7 @@ async function readLoop() {
                 let lines = buffer.split('\n');
                 buffer = lines.pop(); 
 
-                // GECİKME ÇÖZÜMÜ: Sadece en son geçerli veriyi işle 
+                // Sadece en son geçerli veriyi işle 
                 for (let i = lines.length - 1; i >= 0; i--) {
                     const line = lines[i].trim();
                     if (line.includes("nem:")) {
@@ -563,7 +399,7 @@ async function readLoop() {
 }
 
 // -----------------------------------------------------------
-// 4. VERİ İŞLEME VE KAYIT (DEĞİŞTİRİLDİ)
+// 3. VERİ İŞLEME VE RAM'E KAYIT (BASİTLEŞTİRİLMİŞ)
 // -----------------------------------------------------------
 
 function processLine(data) {
@@ -578,36 +414,26 @@ function processLine(data) {
 
         updateDashboard(latestValues);
         
-        // Tüm değerler varsa IndexedDB'ye kaydet ve grafiği canlı güncelle
+        // Tüm değerler varsa RAM'deki diziye kaydet ve grafiği canlı güncelle
         if (latestValues.sic !== undefined && latestValues.nem !== undefined && latestValues.pot !== undefined) {
             const dataPoint = { 
-                // IndexedDB'de tutulacak veri yapısı
                 time: new Date().toLocaleTimeString(), 
                 sic: latestValues.sic,
                 nem: latestValues.nem,
                 pot: latestValues.pot
             };
             
-            // 1. IndexedDB'ye kaydet (FIFO mantığı ile)
-            saveDataToIndexedDB(dataPoint); 
+            // 1. Veriyi RAM'deki diziye ekle
+            sensorHistory.push(dataPoint); 
+            
+            // 2. RAM'de tutulan tüm veri noktalarının tahmini limitini yönet (isteğe bağlı, performans için)
+            // if (sensorHistory.length > MAX_RAM_POINTS) {
+            //     sensorHistory.shift(); // En eski veriyi sil (FIFO, ama RAM için)
+            // }
 
-            // 2. Grafik verisini canlı olarak güncelle
-            if (sensorChart) {
-                const datasets = sensorChart.data.datasets;
-                sensorChart.data.labels.push(dataPoint.time);
-                datasets[0].data.push(dataPoint.sic);
-                datasets[1].data.push(dataPoint.nem);
-                datasets[2].data.push(dataPoint.pot);
-                
-                // Sadece son CHART_VISIBLE_POINTS (20) noktayı göstermek için eskileri kaldır
-                if (sensorChart.data.labels.length > CHART_VISIBLE_POINTS) {
-                    sensorChart.data.labels.shift();
-                    datasets.forEach(dataset => dataset.data.shift());
-                }
-
-                sensorChart.update();
-                updatePrediction(dataPoint.sic);
-            }
+            // 3. Grafik verisini canlı olarak güncelle
+            updateChartLive();
+            updatePrediction(dataPoint.sic);
         }
 
     } catch (e) {
@@ -616,7 +442,7 @@ function processLine(data) {
 }
 
 // -----------------------------------------------------------
-// 5. DASHBOARD VE TAHMİN FONKSİYONLARI (DEĞİŞMEDİ)
+// 4. DASHBOARD VE TAHMİN FONKSİYONLARI (DEĞİŞMEDİ)
 // -----------------------------------------------------------
 
 function updateDashboard(values) {
@@ -673,7 +499,7 @@ function updatePrediction(currentTemp) {
 
 
 // -----------------------------------------------------------
-// 6. DARK MODE VE BAŞLANGIÇ AYARLARI
+// 5. DARK MODE VE BAŞLANGIÇ AYARLARI
 // -----------------------------------------------------------
 
 document.getElementById('modeToggle').addEventListener('click', () => {
@@ -682,18 +508,15 @@ document.getElementById('modeToggle').addEventListener('click', () => {
     document.getElementById('modeToggle').textContent = isDarkMode ? '☀️ Açık Tema' : '🌙 Koyu Tema';
     
     // Tema değişiminde grafiği de güncelle (renkler için)
-    refreshChartFromDB();
+    updateChartLive();
 });
 
-document.addEventListener('DOMContentLoaded', async () => {
-    // 1. IndexedDB'yi başlat
-    await openDB();
-
-    // 2. Tema başlangıç ayarı
+document.addEventListener('DOMContentLoaded', () => {
+    // Tema başlangıç ayarı
     const isDarkMode = document.body.classList.contains('dark-mode');
     document.getElementById('modeToggle').textContent = isDarkMode ? '☀️ Açık Tema' : '🌙 Koyu Tema';
     
-    // 3. Grafik bileşenini başlat ve IndexedDB'den verileri yükle
+    // Grafik bileşenini başlat
     initializeChart();
 });
 </script>
